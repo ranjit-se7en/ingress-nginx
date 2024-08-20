@@ -14,12 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+DEBUG=1
+
 GO_BUILD_CMD="go build"
 
-#if [ -n "$DEBUG" ]; then
-#	set -x
-#	GO_BUILD_CMD="go build -v"
-#fi
+if [ -n "$DEBUG" ]; then
+	set -x
+	GO_BUILD_CMD="go build -v"
+fi
 
 set -o errexit
 set -o nounset
@@ -31,9 +33,16 @@ if [ -z "$PKG" ] || [ -z "$ARCH" ] || [ -z "$COMMIT_SHA" ] || [ -z "$REPO_INFO" 
   exit 1 
 fi
 
-
+export FIPS_MODE=1
 export CGO_ENABLED=0
 export GOARCH="${ARCH}"
+
+GOBUILD_TAGS=""
+if [ "$FIPS_MODE" = 1 ]; then
+  export CGO_ENABLED=1
+  GOBUILD_TAGS="fips"
+  echo "Building with FIPS enabled"
+fi
 
 TARGETS_DIR="rootfs/bin/${ARCH}"
 echo "Building targets for ${ARCH}, generated targets in ${TARGETS_DIR} directory."
@@ -46,6 +55,7 @@ ${GO_BUILD_CMD} \
   -X ${PKG}/version.COMMIT=${COMMIT_SHA} \
   -X ${PKG}/version.REPO=${REPO_INFO}" \
   -buildvcs=false \
+  -tags "${GOBUILD_TAGS}" \
   -o "${TARGETS_DIR}/nginx-ingress-controller" "${PKG}/cmd/nginx"
 
 echo "Building ${PKG}/cmd/dbg"
@@ -56,6 +66,7 @@ ${GO_BUILD_CMD} \
   -X ${PKG}/version.COMMIT=${COMMIT_SHA} \
   -X ${PKG}/version.REPO=${REPO_INFO}" \
   -buildvcs=false \
+  -tags "${GOBUILD_TAGS}" \
   -o "${TARGETS_DIR}/dbg" "${PKG}/cmd/dbg"
 
 echo "Building ${PKG}/cmd/waitshutdown"
@@ -66,4 +77,5 @@ ${GO_BUILD_CMD} \
   -X ${PKG}/version.COMMIT=${COMMIT_SHA} \
   -X ${PKG}/version.REPO=${REPO_INFO}" \
   -buildvcs=false \
+  -tags "${GOBUILD_TAGS}" \
   -o "${TARGETS_DIR}/wait-shutdown" "${PKG}/cmd/waitshutdown"
