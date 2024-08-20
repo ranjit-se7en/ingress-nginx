@@ -33,11 +33,11 @@ LABEL build_id="${BUILD_ID}"
 
 WORKDIR  /etc/nginx
 
-RUN apk update \
-  && apk upgrade \
-  && apk add --no-cache \
-    diffutils \
-  && rm -rf /var/cache/apk/*
+RUN yum -y update \
+  && yum -y upgrade \
+  && yum -y install diffutils \
+  && yum clean all \
+  && rm -rf /var/cache/yum
 
 COPY --chown=www-data:www-data etc /etc
 
@@ -49,10 +49,9 @@ COPY --chown=www-data:www-data bin/${TARGETARCH}/wait-shutdown /
 # with volumes (custom templates)
 RUN bash -xeu -c ' \
   writeDirs=( \
+    /etc/ingress-controller \
     /etc/ingress-controller/ssl \
     /etc/ingress-controller/auth \
-    /etc/ingress-controller/geoip \
-    /etc/ingress-controller/telemetry \
     /var/log \
     /var/log/nginx \
     /tmp/nginx \
@@ -67,14 +66,12 @@ RUN bash -xeu -c ' \
   && echo "/lib:/usr/lib:/usr/local/lib:/modules_mount/etc/nginx/modules/otel" > /etc/ld-musl-x86_64.path
   
 
-RUN apk add --no-cache libcap \
-  && setcap    cap_net_bind_service=+ep /nginx-ingress-controller \
+RUN setcap    cap_net_bind_service=+ep /nginx-ingress-controller \
   && setcap -v cap_net_bind_service=+ep /nginx-ingress-controller \
   && setcap    cap_net_bind_service=+ep /usr/local/nginx/sbin/nginx \
   && setcap -v cap_net_bind_service=+ep /usr/local/nginx/sbin/nginx \
   && setcap    cap_net_bind_service=+ep /usr/bin/dumb-init \
   && setcap -v cap_net_bind_service=+ep /usr/bin/dumb-init \
-  && apk del libcap \
   && ln -sf /usr/local/nginx/sbin/nginx /usr/bin/nginx
 
 USER www-data
